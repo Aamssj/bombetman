@@ -1,0 +1,173 @@
+#include <iostream>
+#include <SDL.h>
+#include <SDL_mixer.h>
+#include <SDL_image.h>
+#include <SDL_ttf.h>
+#include <cmath>
+#include <cstdlib>
+
+using namespace std;
+
+#define SCREEN_WIDTH  640
+#define SCREEN_HEIGHT  480
+#define BALL_COUNT 7
+
+bool is_ball_hit(SDL_Rect ball, int x, int y)
+{
+	if (ball.w == 0) return false;
+	int centerX = ball.x + ball.w / 2;
+	int centerY = ball.y + ball.h / 2;
+	int radius = ball.w / 2;
+	return sqrt((centerX - x) * (centerX - x) + (centerY - y) * (centerY - y)) < radius;
+}
+
+void init_balls(SDL_Rect balls[], int count)
+{
+	int x, y;
+	for (int i = 0; i < count; i++)
+	{
+		do
+		{
+			srand(time(NULL) * i + count * i + rand());
+			x = rand() % 520;
+			y = rand() % 400;
+			
+		} while (is_ball_hit(balls[i - 1], x, y));
+		balls[i] = { x,y,80,80 };
+	}
+}
+
+void init_balls2(SDL_Rect balls[], int count, SDL_Event event,int ind)
+{
+	int x, y,d_move=7,d_color=10;
+	for (int i = 0; i < count; i++)
+	{
+		srand(time(NULL) * i + count * i + rand());
+		if (ind != i)
+		{
+			x = balls[i].x;
+			y = balls[i].y;
+		}
+		else
+		{
+			
+			if (event.key.keysym.sym == SDLK_UP)
+			{
+				if (balls[i].y >= 0) 
+				{
+					x = balls[i].x;
+					y = balls[i].y -= d_move;
+				}
+				else continue;
+			}
+			if (event.key.keysym.sym == SDLK_DOWN) 
+			{
+				if (balls[i].y <= SCREEN_HEIGHT-balls[i].w)
+				{
+					x = balls[i].x;
+					y = balls[i].y += d_move;
+				}
+				else continue;
+			}
+			if (event.key.keysym.sym == SDLK_LEFT)
+			{
+				if (balls[i].x >=0)
+				{
+					x = balls[i].x -= d_move;
+					y = balls[i].y;
+				}
+				else continue;
+			}
+			if (event.key.keysym.sym == SDLK_RIGHT)
+			{
+				if (balls[i].x <= SCREEN_WIDTH - balls[i].w)
+				{
+					x = balls[i].x += d_move;
+					y = balls[i].y;
+				}
+				else continue;
+			}
+			
+		}
+		balls[i] = { x,y,80,80};
+	}
+
+}
+
+
+void draw_balls(SDL_Renderer*& renderer, SDL_Rect balls[],
+	int count, SDL_Texture* texture)
+{
+	for (int i = 0; i < count; i++)
+	{
+		if (balls[i].w == 0);
+		SDL_RenderCopy(renderer, texture, NULL, &balls[i]);
+	}
+}
+
+
+
+
+
+int main(int argc, char** argv)
+{
+    setlocale(0, "");
+
+	TTF_Init();
+	SDL_Init(SDL_INIT_EVERYTHING);
+	SDL_Window* window = SDL_CreateWindow("Click the balls",
+		SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+		SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+	SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, 0);
+
+
+	SDL_Surface* ballImage = IMG_Load("11.bmp");
+	SDL_SetColorKey(ballImage, SDL_TRUE,
+		SDL_MapRGB(ballImage->format, 255, 255, 255));
+	SDL_Texture* ballTexture = SDL_CreateTextureFromSurface(renderer, ballImage);
+	SDL_FreeSurface(ballImage);
+
+	SDL_Rect balls[BALL_COUNT];
+	init_balls(balls, BALL_COUNT);
+   
+	
+	SDL_Event event;
+	bool quit = false;
+	int d_move = 1;
+	int x, y;
+	int ind;
+
+	while (!quit)
+	{
+		while (SDL_PollEvent(&event)) {
+			if (event.type == SDL_QUIT)
+				quit = true;
+			if (event.type == SDL_MOUSEBUTTONDOWN &&
+				event.button.button == SDL_BUTTON_LEFT)
+			{
+
+				for (int i = 0; i < BALL_COUNT; i++)
+				{
+					if (is_ball_hit(balls[i], event.button.x, event.button.y))
+					{
+						ind = i;
+					}
+				}
+			}
+			if (event.key.keysym.sym == SDLK_UP || event.key.keysym.sym == SDLK_DOWN || event.key.keysym.sym == SDLK_LEFT || event.key.keysym.sym == SDLK_RIGHT) {
+				init_balls2(balls, BALL_COUNT, event, ind);
+			}
+		}
+
+		SDL_SetRenderDrawColor(renderer, 255, 255, 255, 0);
+		SDL_RenderClear(renderer);
+		draw_balls(renderer, balls, BALL_COUNT, ballTexture);
+		SDL_RenderPresent(renderer);
+	}
+	SDL_DestroyTexture(ballTexture);
+	TTF_Quit();
+	SDL_DestroyRenderer(renderer);
+	SDL_DestroyWindow(window);
+	SDL_Quit();
+    return 1;
+}
